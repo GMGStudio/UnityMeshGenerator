@@ -10,11 +10,13 @@ public enum Directions
     Down,
     Left,
     Right,
-    Forward
+    Forward,
+    Looping
 }
 
 [RequireComponent(typeof(MeshFilter))]
 [RequireComponent(typeof(MeshRenderer))]
+[RequireComponent(typeof(MeshCollider))]
 public class TrackGenerator : MonoBehaviour
 {
     List<Vector3> verticeList;
@@ -40,6 +42,9 @@ public class TrackGenerator : MonoBehaviour
             case Directions.Right:
                 TurnRight();
                 break;
+            case Directions.Looping:
+                Looping();
+                break;
             default:
                 break;
         }
@@ -50,7 +55,7 @@ public class TrackGenerator : MonoBehaviour
         mesh.RecalculateNormals();
         RecalculateUvs();
 
-        //GetComponent<MeshCollider>().sharedMesh = mesh;
+        GetComponent<MeshCollider>().sharedMesh = mesh;
     }
 
     private void ExpandForward()
@@ -76,7 +81,6 @@ public class TrackGenerator : MonoBehaviour
 
         var radius = Vector3.Distance(bottomRight, bottomLeft) / 2f;
         var centerPos = bottomLeft - Vector3.Normalize(bottomRight - bottomLeft) / 2;
-        
         var centerDirection = Quaternion.LookRotation((bottomRight - bottomLeft).normalized);
 
         for (var i = 0; i < TurnVerticiPoints; i++)
@@ -108,6 +112,60 @@ public class TrackGenerator : MonoBehaviour
         }
     }
 
+    private void Looping()
+    {
+        int TurnVerticiPoints = 40;
+        var radius = 2.5f;
+
+
+        Vector3 bottomRight = lastVerticies[0];
+        Vector3 bottomLeft = lastVerticies[1];
+        Vector3 TopRight = lastVerticies[2];
+
+        var prebottomRight = verticeList[verticeList.Count - 8];
+
+        var currentDirection = bottomRight - prebottomRight;
+
+        var centerPos = bottomRight;
+        centerPos.x = (bottomLeft.x - bottomRight.x) / 2;
+        centerPos.y = bottomLeft.y + radius;
+
+        var centerDirection = Quaternion.LookRotation((bottomRight - TopRight).normalized);
+
+        var radiusDefault = radius;
+        for (var i = 0; i < TurnVerticiPoints; i++)
+        {
+            List<Vector3> newVerticies = new List<Vector3>();
+
+            radius = radiusDefault;
+            for (int k = 0; k < 4; k++)
+            {
+                if (k == 2)
+                {
+                    radius -= .5f;
+                }
+                var angle = Mathf.PI * (-i - 1) / (TurnVerticiPoints / 2);
+                var y = Mathf.Sin(angle) * radius;
+                var z = Mathf.Cos(angle) * radius;
+                var pos = new Vector3(0, y, z);
+
+                pos = centerDirection * pos;
+                var newPosition = centerPos + pos;
+                newPosition.x = lastVerticies[k].x + 0.03f;
+                newVerticies.Add(newPosition);
+            }
+
+            lastVerticies = new List<Vector3>();
+            lastVerticies.AddRange(newVerticies);
+            verticeList.AddRange(newVerticies);
+            AddTriangles();
+        }
+
+        AddVerticies(currentDirection);
+
+        AddTriangles();
+    }
+
     private void TurnRight()
     {
         int TurnVerticiPoints = 10;
@@ -127,7 +185,7 @@ public class TrackGenerator : MonoBehaviour
             bool SwitchRadius = false;
 
             foreach (var item in lastVerticies)
-            {             
+            {
                 radius = SwitchRadius ? radius + 1 : radius - 1;
                 SwitchRadius = !SwitchRadius;
 
@@ -190,26 +248,29 @@ public class TrackGenerator : MonoBehaviour
         }
         if (mesh == null)
         {
-            mesh = new Mesh();
-            mesh.name = "Track";
+            mesh = new Mesh
+            {
+                name = "Track"
+            };
             meshFilter.mesh = mesh;
         }
 
         ResetVerticies();
         ResetTriangles();
-
+        mesh.Clear();
         mesh.vertices = verticeList.ToArray();
         mesh.triangles = triangles.ToArray();
         mesh.RecalculateNormals();
         RecalculateUvs();
+
+        GetComponent<MeshCollider>().sharedMesh = mesh;
     }
 
 
 
     private void RecalculateUvs()
     {
-        Vector2[] uvs = new Vector2[verticeList.Count];
-        Vector2[] uvs2 = new Vector2[verticeList.Count];
+        Vector2[] uvs = new Vector2[mesh.vertices.Length];
 
         for (int i = 0; i < uvs.Length; i++)
         {
@@ -220,6 +281,7 @@ public class TrackGenerator : MonoBehaviour
 
     private void ResetVerticies()
     {
+        verticeList = null;
         verticeList = new List<Vector3>
         {
             new Vector3(0, 0, 0), //Bottom 0 
@@ -273,7 +335,7 @@ public class TrackGenerator : MonoBehaviour
         foreach (var item in verticeList)
         {
             Gizmos.color = item == Vector3.zero || verticeList.IndexOf(item) % 4 == 0 ? Color.blue : Color.red;
-            Gizmos.DrawSphere(item, .02f);
+            Gizmos.DrawSphere(transform.TransformPoint(item), .02f);
         }
     }
 }

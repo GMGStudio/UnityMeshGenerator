@@ -12,17 +12,27 @@ public class TrackGeneratorEditor : Editor
         DrawDefaultInspector();
 
         TrackGenerator generator = (TrackGenerator)target;
-        
+
         if (GUILayout.Button("Random"))
         {
             GenerateRandom(generator);
+        }
+        if (GUILayout.Button("Looping"))
+        {
+            generator.Expand(Directions.Looping);
         }
 
         if (GUILayout.Button("Forward"))
         {
             generator.Expand(Directions.Forward);
         }
-
+        if (GUILayout.Button("Fast Forward"))
+        {
+            for (int i = 0; i < 20; i++)
+            {
+                generator.Expand(Directions.Forward);
+            }
+        }
         if (GUILayout.Button("Left"))
         {
             generator.Expand(Directions.Left);
